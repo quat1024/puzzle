@@ -1,0 +1,2 @@
+
+abbrev Room := Nat
