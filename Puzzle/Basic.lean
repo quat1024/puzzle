@@ -41,7 +41,7 @@ def shootPortals : Step × FactSet → Nondet (Step × FactSet)
 
   let existingPortal := facts.getPortal color
 
-  if let none := facts.getPortal color.compliment then
+  if let none := facts.getPortal color.complement then
     if color == .alternate then
       -- Don't shoot alternate portal unless the primary exists
       -- this is sound UNTIL there's a way to lose only one portal at a time
