@@ -1,0 +1,10 @@
+name = "puzzle"
+version = "0.1.0"
+defaultTargets = ["puzzle"]
+
+[[lean_lib]]
+name = "Puzzle"
+
+[[lean_exe]]
+name = "puzzle"
+root = "Main"
