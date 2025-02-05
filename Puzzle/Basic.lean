@@ -57,15 +57,16 @@ def shootPortals : Step × FactSet → Nondet (Step × FactSet)
 
 -- Take one action in the puzzle
 def move : Step × FactSet → Nondet (Step × FactSet)
-| (last, facts) => walkThroughPortals facts ++
-                walkFree facts ++
-                walkFizzle facts ++
-                shootPortals (last, facts)
+| (last, facts) =>
+  walkThroughPortals facts ++
+  walkFree facts ++
+  walkFizzle facts ++
+  shootPortals (last, facts)
 
 -- Take n actions in the puzzle
 def move' : Nat → Nondet (Step × FactSet) → Nondet (Step × FactSet)
 | 0,       state => state
-| .succ i, state => Nondet.dedupe $ move' i (state >>= move)
+| .succ i, state => move' i (state >>= move)
 
 def puzzle : FactSet := {
   player := 0,
@@ -77,4 +78,4 @@ def puzzle : FactSet := {
   sightlines := [(0, 1), (2, 3)]
 }
 
-#eval move' 7 $ Nondet.pure (Step.start, puzzle)
+#eval move' 1 $ Nondet.pure (Step.start, puzzle)
