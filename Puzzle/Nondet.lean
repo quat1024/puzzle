@@ -2,6 +2,9 @@
 inductive Nondet (α : Type) where
 | choices: List α → Nondet α
 
+def Nondet.toList : Nondet α → List α
+| .choices list => list
+
 instance : Append (Nondet α) where
   append
   | .choices a, .choices b => .choices $ (a ++ b)
@@ -20,4 +23,3 @@ instance : Monad Nondet where
 
 def Nondet.dedupe [BEq α]: Nondet α → Nondet α
 | .choices f => .choices $ List.eraseDups f
-
