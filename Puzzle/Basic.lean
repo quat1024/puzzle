@@ -75,14 +75,25 @@ instance : EmptyCollection StateGraph where
 def sortDammit : List FactSet → List FactSet
 | list => List.mergeSort list (Ordering.isLE $ compare · ·)
 
+def toDot : StateGraph → String
+| graph =>
+  let connections := Nondet.choices graph.keys >>= (fun key =>
+    Nondet.choices (Std.HashMap.get! graph key) >>= (fun val => (
+      Nondet.pure $ "  " ++ key.microString ++ " -> " ++ val.microString ++ ";"
+    )))
+  let connections' := String.join $ List.intersperseTR "\n" connections.toList
+  "digraph g {\n" ++ connections' ++ "\n}"
+
+-- instance : Repr StateGraph where
+--   reprPrec g prec := let one := (fun (f : FactSet) =>
+--     -- reprPrec f prec
+--     f.shortString
+--     ++ " → "
+--     ++ reprPrec (List.length $ Std.HashMap.get! g f) prec
+--     ++ " states")
+--   Std.Format.join $ List.intersperseTR "\n" $ one <$> (sortDammit $ g.keys)
 instance : Repr StateGraph where
-  reprPrec g prec := let one := (fun (f : FactSet) =>
-    -- reprPrec f prec
-    f.shortString
-    ++ " → "
-    ++ reprPrec (List.length $ Std.HashMap.get! g f) prec
-    ++ " states")
-  Std.Format.join $ List.intersperseTR "\n" $ one <$> (sortDammit $ g.keys)
+  reprPrec g _prec := toDot g
 
 partial def buildGraph : FactSet → StateGraph → StateGraph
 | facts, graph =>

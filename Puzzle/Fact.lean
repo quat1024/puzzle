@@ -68,6 +68,13 @@ instance : LE FactSet := leOfOrd
 def FactSet.shortString : FactSet → String
 | set => s!"player {set.player}, p1 {set.primaryPortal}, p2 {set.alternatePortal}"
 
+def FactSet.microString : FactSet → String
+| set =>
+  --whats the right way to do this
+  let p1 := Option.get! (("a" ++ toString ·) <$> set.primaryPortal <|> some "")
+  let p2 := Option.get! (("b" ++ toString ·) <$> set.alternatePortal <|> some "")
+  "p" ++ toString set.player ++ p1 ++ p2
+
 def FactSet.clearPortals : FactSet → FactSet
 | old => { old with primaryPortal := none, alternatePortal := none}
 
