@@ -24,7 +24,9 @@ def walkThroughPortals : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
   let (pri, alt) ← Nondet.choices $ Option.toList $ facts.getPortalPair
-  if player == pri then
+  if pri == alt then
+    default
+  else if player == pri then
     pure (facts.walk alt)
   else if player == alt then
     pure (facts.walk pri)
@@ -77,8 +79,9 @@ def sortDammit : List FactSet → List FactSet
 
 def toDot : StateGraph → String
 | graph =>
-  let connections := Nondet.choices graph.keys >>= (fun key =>
-    Nondet.choices (Std.HashMap.get! graph key) >>= (fun val => (
+  let keys := sortDammit graph.keys
+  let connections := Nondet.choices keys >>= (fun key =>
+    Nondet.choices (sortDammit (Std.HashMap.get! graph key)) >>= (fun val => (
       Nondet.pure $ "  " ++ key.microString ++ " -> " ++ val.microString ++ ";"
     )))
   let connections' := String.join $ List.intersperseTR "\n" connections.toList
