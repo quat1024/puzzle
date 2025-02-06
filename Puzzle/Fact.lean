@@ -1,5 +1,6 @@
 import Puzzle.Room
 import Puzzle.Portal
+import Puzzle.Cube
 
 abbrev PlayerFact := Room
 abbrev PortalStateFact := PortalState
@@ -27,56 +28,6 @@ instance : Coe (Nat × Nat) FizzleConnectionFact where
   coe pair := let (fst, snd) := pair; {src := fst, dst := snd}
 instance : Coe (Nat × Nat) SightlineFact where
   coe pair := let (fst, snd) := pair; {src := fst, dst := snd}
-
-inductive CubePositionFact where
-| nowhere: CubePositionFact
-| inRoom: Room → CubePositionFact
-| inHands: CubePositionFact
-deriving BEq, Ord, Hashable, Repr
-
-def CubePositionFact.isHeld : CubePositionFact → Bool
-| .inHands => true
-| _ => false
-
-def CubePositionFact.isInRoom : Room → CubePositionFact → Bool
-| _, .nowhere => false
-| _, .inHands => true
-| r1, .inRoom r2 => r1 == r2
-
-instance : ToString CubePositionFact where
-  toString
-  | .nowhere => "×"
-  | .inHands => "held"
-  | .inRoom r => toString r
-
-structure CubeFact where
-  id: CubeId
-  autorespawn: Option CubePositionFact
-  position: CubePositionFact
-deriving BEq, Ord, Hashable, Repr
-
-def CubeFact.isHeld := CubePositionFact.isHeld ∘ CubeFact.position
-def CubeFact.isInRoom : Room → CubeFact → Bool
-| room, fact => fact.position.isInRoom room
-
-def CubeFact.destroy : CubeFact → CubeFact
-| c =>
-  if let some respawn := c.autorespawn then
-    {c with position := respawn}
-  else
-    {c with position := .nowhere}
-
-instance : ToString CubeFact where
-  toString f := s!"{f.id}{f.position}"
-
-def CubeFact.compareLists : List CubeFact → List CubeFact → Ordering
-| [], [] => .eq
-| _x, [] => .gt
-| [], _y => .lt
-| x :: xs, y :: ys => (compare x y).then (compareLists xs ys)
-
-instance : Ord (List CubeFact) where
-  compare := CubeFact.compareLists
 
 structure FactSet where
   player: PlayerFact
@@ -118,7 +69,7 @@ def FactSet.getHeldCube : FactSet → Option CubeFact
 
 def FactSet.isHoldingCube : FactSet → Bool := Option.isSome ∘ FactSet.getHeldCube
 
-def FactSet.moveCube : CubeFact → CubePositionFact → FactSet → FactSet
+def FactSet.moveCube : CubeFact → CubePosition → FactSet → FactSet
 | toPlace, dest, set => { set with cubes :=
   (fun x => if x == toPlace then {x with position := dest} else x) <$> set.cubes}
 
@@ -146,11 +97,14 @@ def FactSet.sightlineDests : Room → FactSet → List Room
 | room, set => set.sightlines.filterMap (fun x =>
   if x.src == room then some x.dst else none)
 
-def FactSet.cubeDropDests : Room → FactSet → List CubePositionFact
+def FactSet.cubeDropDests : Room → FactSet → List CubePosition
 | room, _ => [.inRoom room]
 
 def FactSet.grabbableCubes : Room → FactSet → List CubeFact
 | room, set => List.filter (CubeFact.isInRoom room) set.cubes
+
+-- Might end up more complex when there are more places to put the cube
+def FactSet.dissolvableThruFizzlerCubes : Room → FactSet → List CubeFact := FactSet.grabbableCubes
 
 def FactSet.visiblePortalSurfaces : Room → FactSet → List Room
 | room, set =>

@@ -46,7 +46,7 @@ def grabdropCubes : FactSet → Nondet FactSet
   let player := facts.player
   let heldCube := facts.getHeldCube
   if let some heldCube := heldCube then
-    -- Drop cubes into this room
+    -- Drop cubes into the room
     let dropDests := do
       let dropDest ← Nondet.choices $ facts.cubeDropDests player
       pure (facts.moveCube heldCube dropDest)
@@ -58,8 +58,18 @@ def grabdropCubes : FactSet → Nondet FactSet
 
     dropDests ++ fizzleDests
   else
-    let grabbableCubes ← Nondet.choices $ facts.grabbableCubes player
-    pure (facts.moveCube grabbableCubes (.inHands))
+    -- Pick a cube up from the room
+    let grabbableCubes := do
+      let grabbableCube ← Nondet.choices $ facts.grabbableCubes player
+      pure (facts.moveCube grabbableCube (.inHands))
+
+    -- Fizzle cubes through walls
+    let dissolveThruFizzlerCubes := do
+      let thruFizzlerDest ← Nondet.choices $ facts.fizzlewalkDests player
+      let cubeThruFizzler ← Nondet.choices $ facts.dissolvableThruFizzlerCubes thruFizzlerDest
+      pure (facts.destroyCube cubeThruFizzler)
+
+    grabbableCubes ++ dissolveThruFizzlerCubes
 
 -- Take one action in the puzzle
 def move : FactSet → Nondet FactSet
@@ -118,11 +128,11 @@ def puzzle : FactSet := {
   portalSurfaces := [0, 1, 2, 3],
   freeConnections := [(3, 4), (4, 3)],
   fizzleConnections := [(1, 2)],
-  sightlines := [(0, 1), (2, 3), (3, 2)],
+  sightlines := [(0, 1), (1,0), (2, 3), (3, 2)],
   cubes := [{
     id := 0,
-    autorespawn := some (.inRoom 3),
-    position := .inRoom 1
+    autorespawn := some (.inRoom 0),
+    position := .inRoom 0
   }]
 }
 
@@ -142,4 +152,4 @@ def puzzle' : FactSet := {
 
 #eval move' 2 $ Nondet.pure puzzle
 #eval buildGraph puzzle ∅
-#eval buildGraph puzzle' ∅
+-- #eval buildGraph puzzle' ∅

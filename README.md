@@ -24,3 +24,31 @@ so the solver part should work like this
 * for each state that does not exist in "the current graph":
   * recur.
   * this "recur" also modifies "the current graph" and might render more states redundant
+
+(later)
+
+makes sense to do this i think
+
+- explore all "walk around" moves until there aren't any more
+- then start picking up cubes and shooting portals
+
+hoping for early-cutoff if you walk into the exit door
+
+## regarding grabbing cubes
+
+currently i model cubes being in three kinds of position: nowhere, in your hands, or on the ground. (later i will add "on button" and stuff.) you can do four things
+
+- pick a cube up from the current room and move it to your hands
+- pick a cube up from an adjacent room blocked by a fizzler and dissolve it
+- drop a cube from your hands to somewhere in the current room
+- drop a cube from your hands into an adjacent fizzler 
+
+if you walk through a fizzler while a cube is in your hands, the cube is destroyed
+
+might want to change this into
+
+- while you move through open space, you can take *any combination* of cubes with you
+- if there is a fizzler in the current room, you can dissolve any cube in the room
+- if there is a fizzler blocking an adjacent room, you can dissolve cubes in that room that aren't busy resting on a button or something (same concept)
+
+basically this removes the "cube in hands" state, which will halve the number of puzzle states (`player in room 0, cube in room 0` vs `player in room 0, cube in hands`), and i think it's also more realistic (if you have a one-way ledge, you can bring more than one cube by tossing them down the ledge)
