@@ -68,7 +68,13 @@ def toDot : StateGraph → String
   let keys := sortDammit graph.keys
   let connections := Nondet.choices keys >>= (fun key =>
     Nondet.choices (sortDammit (Std.HashMap.get! graph key)) >>= (fun val => (
-      Nondet.pure $ "  \"" ++ key.microString ++ "\" -> \"" ++ val.microString ++ "\";"
+      let most := "  \"" ++ key.microString ++ "\" -> \"" ++ val.microString ++ "\"";
+      if (Std.HashMap.getD graph val []).contains key then
+        if key ≤ val then
+          Nondet.pure $ most ++ " [dir=both];"
+        else
+          default
+      else Nondet.pure $ most ++ ";"
     )))
   let connections' := String.join $ List.intersperseTR "\n" connections.toList
   "digraph g {\n" ++ connections' ++ "\n}"
