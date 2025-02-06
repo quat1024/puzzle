@@ -89,12 +89,12 @@ instance : Repr StateGraph where
 
 partial def buildGraph : FactSet → StateGraph → StateGraph
 | facts, graph =>
-  let steppedFacts := Nondet.toList (move facts)
-  let newFacts := steppedFacts.filter (!graph.contains ·)
   Id.run do
+    let steppedFacts := Nondet.toList (move facts)
     let mut graph := graph.insert facts steppedFacts;
-    for recurFact in newFacts do
-      graph := buildGraph recurFact graph
+    for recurFact in steppedFacts do
+      if !graph.contains recurFact then
+        graph := buildGraph recurFact graph
     graph
   -- lean do sugar is actually the funniest thing in the world
   -- this is ridiculous. whats the "correct" functional way to do this
