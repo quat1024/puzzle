@@ -23,36 +23,22 @@ def walkFizzle : FactSet → Nondet FactSet
 def walkThroughPortals : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
-  let (pri, alt) ← Nondet.choices $ Option.toList $ facts.getPortalPair
-  if pri == alt then
-    default
-  else if player == pri then
-    pure (facts.walk alt)
-  else if player == alt then
-    pure (facts.walk pri)
+  if let (.twoPortals a b) := facts.portal then
+    if a == b then default
+    else if player == a then pure (facts.walk b)
+    else if player == b then pure (facts.walk a)
+    else default
   else default
 
 -- Shoot portals
 def shootPortals : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
-  let color ← Nondet.choices $ [.primary, .alternate]
-
-  let existingPortal := facts.getPortal color
-
-  if color == .alternate then
-    if let none := facts.getPortal color.complement then
-      -- Don't shoot alternate portal unless the primary exists
-      -- this is sound UNTIL there's a way to lose only one portal at a time
-      default
-
   let target ← Nondet.choices $ facts.visiblePortalSurfaces player
-  if existingPortal == target then
-    -- Don't reshoot portals into rooms they're already in
-    -- Also that's Option Bool == Bool and it just works. Ok
-    default
-
-  pure (facts.shootPortal target color)
+  let newPortal ← facts.portal.fireInto target
+  if facts.portal != newPortal then
+    pure (facts.changePortals newPortal)
+  else default
 
 -- Take one action in the puzzle
 def move : FactSet → Nondet FactSet
@@ -82,7 +68,7 @@ def toDot : StateGraph → String
   let keys := sortDammit graph.keys
   let connections := Nondet.choices keys >>= (fun key =>
     Nondet.choices (sortDammit (Std.HashMap.get! graph key)) >>= (fun val => (
-      Nondet.pure $ "  " ++ key.microString ++ " -> " ++ val.microString ++ ";"
+      Nondet.pure $ "  \"" ++ key.microString ++ "\" -> \"" ++ val.microString ++ "\";"
     )))
   let connections' := String.join $ List.intersperseTR "\n" connections.toList
   "digraph g {\n" ++ connections' ++ "\n}"
@@ -113,14 +99,22 @@ partial def buildGraph : FactSet → StateGraph → StateGraph
 
 def puzzle : FactSet := {
   player := 0,
-  primaryPortal := none,
-  alternatePortal := none,
+  portal := .noPortals,
   portalSurfaces := [0, 1, 2, 3],
   freeConnections := [(3, 4)],
   fizzleConnections := [(1, 2)],
   sightlines := [(0, 1), (2, 3)]
 }
 
-#eval move' 2 $ Nondet.pure puzzle
+def puzzle' : FactSet := {
+  player := 0,
+  portal := .noPortals,
+  portalSurfaces := [3, 4, 7, 8],
+  freeConnections := [(0, 1), (1,0), (1,2), (2,1), (2,3), (3,2), (4,5), (5,4), (5,6), (6,5), (6, 7), (7,6)],
+  fizzleConnections := [],
+  sightlines := [(3, 4), (4,3), (7,8)]
+}
 
+#eval move' 2 $ Nondet.pure puzzle
 #eval buildGraph puzzle ∅
+#eval buildGraph puzzle' ∅

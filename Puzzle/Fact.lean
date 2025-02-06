@@ -2,7 +2,7 @@ import Puzzle.Room
 import Puzzle.Portal
 
 abbrev PlayerFact := Room
-abbrev PortalFact := Room
+abbrev PortalStateFact := PortalState
 abbrev PortalSurfaceFact := Room
 
 -- -- this is annoying
@@ -46,8 +46,7 @@ instance : Coe (Nat × Nat) SightlineFact where
 
 structure FactSet where
   player: PlayerFact
-  primaryPortal: Option PortalFact
-  alternatePortal: Option PortalFact
+  portal: PortalStateFact
 
   portalSurfaces: List PortalSurfaceFact
   freeConnections: List FreeConnectionFact
@@ -59,35 +58,33 @@ instance : ToString FactSet where
   toString f := Std.Format.pretty $ Repr.reprPrec f 0
 
 instance : Ord FactSet where
-  compare a b := (compare a.player b.player).then
-    ((compare a.primaryPortal b.primaryPortal).then
-      (compare a.alternatePortal b.alternatePortal))
+  compare a b := (compare a.player b.player).then (compare a.portal b.portal)
 
 instance : LE FactSet := leOfOrd
 
 def FactSet.shortString : FactSet → String
-| set => s!"player {set.player}, p1 {set.primaryPortal}, p2 {set.alternatePortal}"
+| set => s!"player {set.player}, p {set.portal}"
 
 def FactSet.microString : FactSet → String
 | set =>
-  --whats the right way to do this
-  let p1 := Option.get! (("a" ++ toString ·) <$> set.primaryPortal <|> some "")
-  let p2 := Option.get! (("b" ++ toString ·) <$> set.alternatePortal <|> some "")
-  "p" ++ toString set.player ++ p1 ++ p2
+  "p" ++ toString set.player ++ toString set.portal
 
 def FactSet.clearPortals : FactSet → FactSet
-| old => { old with primaryPortal := none, alternatePortal := none}
+| old => { old with portal := .noPortals}
 
-def FactSet.getPortal : Portal → FactSet → Option Room
-| .primary, set => set.primaryPortal
-| .alternate, set => set.alternatePortal
+def FactSet.changePortals : PortalState → FactSet → FactSet
+| newState, old => { old with portal := newState}
 
-def FactSet.getPortalPair : FactSet → Option (PortalFact × PortalFact)
-| set => do ((← set.primaryPortal), (← set.alternatePortal))
+-- def FactSet.getPortal : Portal → FactSet → Option Room
+-- | .primary, set => set.primaryPortal
+-- | .alternate, set => set.alternatePortal
 
-def FactSet.shootPortal : Room → Portal → FactSet → FactSet
-| room, .primary  , set => {set with primaryPortal   := some room}
-| room, .alternate, set => {set with alternatePortal := some room}
+-- def FactSet.getPortalPair : FactSet → Option (PortalFact × PortalFact)
+-- | set => do ((← set.primaryPortal), (← set.alternatePortal))
+
+-- def FactSet.shootPortal : Room → Portal → FactSet → FactSet
+-- | room, .primary  , set => {set with primaryPortal   := some room}
+-- | room, .alternate, set => {set with alternatePortal := some room}
 
 def FactSet.walk : Room → FactSet → FactSet
 | room, set => {set with player := room}
