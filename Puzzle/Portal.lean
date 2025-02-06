@@ -13,12 +13,12 @@ deriving BEq, Repr, Hashable, Ord
 def PortalState.fireInto: Room → PortalState → Nondet PortalState
 | new, .noPortals => Nondet.pure $ .onePortal new
 | new, .onePortal old =>
-  if l : new < old then
+  if _l : new < old then
     Nondet.choices [
       .onePortal new,
       .twoPortals new old
     ]
-  else if e : new == old then
+  else if _e : new == old then
     Nondet.pure $ .twoPortals new new
   else Nondet.choices $ [
     .onePortal new,

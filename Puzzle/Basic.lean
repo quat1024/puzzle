@@ -40,10 +40,31 @@ def shootPortals : FactSet → Nondet FactSet
     pure (facts.changePortals newPortal)
   else default
 
+-- Play with cubes
+def grabdropCubes : FactSet → Nondet FactSet
+| facts => do
+  let player := facts.player
+  let heldCube := facts.getHeldCube
+  if let some heldCube := heldCube then
+    -- Drop cubes into this room
+    let dropDests := do
+      let dropDest ← Nondet.choices $ facts.cubeDropDests player
+      pure (facts.moveCube heldCube dropDest)
+
+    -- Fizzle cubes in an adjacent fizzler, if there are any
+    let fizzleDests := do
+      let _ ← Nondet.choices $ facts.fizzlewalkDests player |> List.take 1
+      pure (facts.destroyCube heldCube)
+
+    dropDests ++ fizzleDests
+  else
+    let grabbableCubes ← Nondet.choices $ facts.grabbableCubes player
+    pure (facts.moveCube grabbableCubes (.inHands))
+
 -- Take one action in the puzzle
 def move : FactSet → Nondet FactSet
 | facts =>
-  Nondet.choices [walkFree, walkFizzle, walkThroughPortals, shootPortals] >>= (· facts)
+  Nondet.choices [walkFree, walkFizzle, walkThroughPortals, shootPortals, grabdropCubes] >>= (· facts)
 
 -- Take n actions in the puzzle
 def move' : Nat → Nondet FactSet → Nondet FactSet
@@ -76,14 +97,6 @@ def toDot : StateGraph → String
   let connections' := String.join $ List.intersperseTR "\n" connections.toList
   "digraph g {\n" ++ connections' ++ "\n}"
 
--- instance : Repr StateGraph where
---   reprPrec g prec := let one := (fun (f : FactSet) =>
---     -- reprPrec f prec
---     f.shortString
---     ++ " → "
---     ++ reprPrec (List.length $ Std.HashMap.get! g f) prec
---     ++ " states")
---   Std.Format.join $ List.intersperseTR "\n" $ one <$> (sortDammit $ g.keys)
 instance : Repr StateGraph where
   reprPrec g _prec := toDot g
 
@@ -99,14 +112,18 @@ partial def buildGraph : FactSet → StateGraph → StateGraph
   -- lean do sugar is actually the funniest thing in the world
   -- this is ridiculous. whats the "correct" functional way to do this
 
-
 def puzzle : FactSet := {
   player := 0,
   portal := .noPortals,
   portalSurfaces := [0, 1, 2, 3],
-  freeConnections := [(3, 4)],
+  freeConnections := [(3, 4), (4, 3)],
   fizzleConnections := [(1, 2)],
-  sightlines := [(0, 1), (2, 3)]
+  sightlines := [(0, 1), (2, 3), (3, 2)],
+  cubes := [{
+    id := 0,
+    autorespawn := some (.inRoom 3),
+    position := .inRoom 1
+  }]
 }
 
 def puzzle' : FactSet := {
@@ -115,7 +132,12 @@ def puzzle' : FactSet := {
   portalSurfaces := [3, 4, 7, 8],
   freeConnections := [(0, 1), (1,0), (1,2), (2,1), (2,3), (3,2), (4,5), (5,4), (5,6), (6,5), (6, 7), (7,6)],
   fizzleConnections := [],
-  sightlines := [(3, 4), (4,3), (7,8)]
+  sightlines := [(3, 4), (4,3), (7,8)],
+  cubes := [{
+    id := 0,
+    autorespawn := some (.inRoom 3),
+    position := .inRoom 1
+  }]
 }
 
 #eval move' 2 $ Nondet.pure puzzle
