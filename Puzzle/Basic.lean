@@ -43,10 +43,7 @@ def shootPortals : FactSet → Nondet FactSet
 -- Take one action in the puzzle
 def move : FactSet → Nondet FactSet
 | facts =>
-  walkThroughPortals facts ++
-  walkFree facts ++
-  walkFizzle facts ++
-  shootPortals facts
+  Nondet.choices [walkFree, walkFizzle, walkThroughPortals, shootPortals] >>= (· facts)
 
 -- Take n actions in the puzzle
 def move' : Nat → Nondet FactSet → Nondet FactSet

@@ -5,22 +5,6 @@ abbrev PlayerFact := Room
 abbrev PortalStateFact := PortalState
 abbrev PortalSurfaceFact := Room
 
--- -- this is annoying
--- instance : OfNat PlayerFact a where ofNat := a
--- instance : OfNat PortalFact a where ofNat := a
--- instance : OfNat PortalSurfaceFact a where ofNat := a
-
--- -- feel like im doing something wrong
--- instance : Coe PlayerFact Nat := ⟨id⟩
--- instance : ToString PlayerFact where
---   toString pf := let foo : Nat := ↑pf; toString foo
--- instance : Coe PortalFact Nat := ⟨id⟩
--- instance : ToString PortalFact where
---   toString pf := let foo : Nat := ↑pf; toString foo
--- instance : Coe PortalSurfaceFact Nat := ⟨id⟩
--- instance : ToString PortalSurfaceFact where
---   toString pf := let foo : Nat := ↑pf; toString foo
-
 structure FreeConnectionFact where
   src: Room
   dst: Room
@@ -69,28 +53,14 @@ def FactSet.microString : FactSet → String
 | set =>
   "p" ++ toString set.player ++ toString set.portal
 
-def FactSet.clearPortals : FactSet → FactSet
-| old => { old with portal := .noPortals}
-
 def FactSet.changePortals : PortalState → FactSet → FactSet
 | newState, old => { old with portal := newState}
-
--- def FactSet.getPortal : Portal → FactSet → Option Room
--- | .primary, set => set.primaryPortal
--- | .alternate, set => set.alternatePortal
-
--- def FactSet.getPortalPair : FactSet → Option (PortalFact × PortalFact)
--- | set => do ((← set.primaryPortal), (← set.alternatePortal))
-
--- def FactSet.shootPortal : Room → Portal → FactSet → FactSet
--- | room, .primary  , set => {set with primaryPortal   := some room}
--- | room, .alternate, set => {set with alternatePortal := some room}
 
 def FactSet.walk : Room → FactSet → FactSet
 | room, set => {set with player := room}
 
 def FactSet.fizzlewalk : Room → FactSet → FactSet
-| room => .walk room ∘ .clearPortals
+| room => .walk room ∘ .changePortals .noPortals
 
 def FactSet.freewalkDests : Room → FactSet → List Room
 | room, set => set.freeConnections.filterMap (fun x =>
@@ -108,5 +78,3 @@ def FactSet.visiblePortalSurfaces : Room → FactSet → List Room
 | room, set =>
   let destinations := List.insert room $ set.sightlineDests room;
   set.portalSurfaces.filter (destinations.contains)
-
--- todo
