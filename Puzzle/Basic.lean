@@ -5,22 +5,23 @@ import Puzzle.Fact
 
 import Std.Data.HashMap.Basic
 
--- Wander around through open space
+-- Wander through open space.
 def walkFree : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
   let dst ← Nondet.choices $ facts.freewalkDests player
   pure (facts.walk dst)
 
--- Walk through a fizzler, deleting the portals
-def walkFizzle : FactSet → Nondet FactSet
+-- Push cubes through open space.
+def cubeFree : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
-  let dst ← Nondet.choices $ facts.fizzlewalkDests player
-  pure (facts.fizzlewalk dst)
+  let dst ← Nondet.choices $ facts.freewalkDests player
+  let cubeToPush ← Nondet.choices $ facts.grabbableCubes player
+  pure (facts.moveCube cubeToPush (.inRoom dst))
 
--- Travel through a pair of portals
-def walkThroughPortals : FactSet → Nondet FactSet
+-- Travel through a pair of portals.
+def walkPortal : FactSet → Nondet FactSet
 | facts => do
   let player := facts.player
   if let (.twoPortals a b) := facts.portal then
@@ -29,6 +30,46 @@ def walkThroughPortals : FactSet → Nondet FactSet
     else if player == b then pure (facts.walk a)
     else default
   else default
+
+-- Push a cube through a pair of portals.
+def cubePortal : FactSet → Nondet FactSet
+| facts => do
+  let player := facts.player
+  let cubeToPush ← Nondet.choices $ facts.grabbableCubes player
+  if let (.twoPortals a b) := facts.portal then
+    if a == b then default
+    else if player == a then pure (facts.moveCube cubeToPush (.inRoom b))
+    else if player == b then pure (facts.moveCube cubeToPush (.inRoom a))
+    else default
+  else default
+
+-- Walk through a fizzler, deleting portals
+def walkFizzle : FactSet → Nondet FactSet
+| facts => do
+  let player := facts.player
+  let dst ← Nondet.choices $ facts.fizzlewalkDests player
+  pure (facts.fizzlewalk dst)
+
+-- Destroy cubes in fizzlers
+def cubeFizzle : FactSet → Nondet FactSet
+| facts => do
+  let player := facts.player
+
+  -- Take cubes in this room, destroy them in an adjacent fizzler
+  let fizzleHere := do
+    -- need at least one fizzler in the room but i don't care which one
+    -- todo: approximation; what about grated fizzlers
+    let _ ← Nondet.choices $ facts.fizzlewalkDests player |> List.take 1
+    let cubeToFizzle ← Nondet.choices $ facts.grabbableCubes player
+    pure (facts.destroyCube cubeToFizzle)
+
+  -- Grab cubes through fizzlers in adjacent rooms and destroy them through the fizzler
+  let fizzleThere := do
+    let thruFizzlerDest ← Nondet.choices $ facts.fizzlewalkDests player
+    let cubeThruFizzler ← Nondet.choices $ facts.dissolvableThruFizzlerCubes thruFizzlerDest
+    pure (facts.destroyCube cubeThruFizzler)
+
+  fizzleHere ++ fizzleThere
 
 -- Shoot portals
 def shootPortals : FactSet → Nondet FactSet
@@ -40,41 +81,15 @@ def shootPortals : FactSet → Nondet FactSet
     pure (facts.changePortals newPortal)
   else default
 
--- Play with cubes
-def grabdropCubes : FactSet → Nondet FactSet
-| facts => do
-  let player := facts.player
-  let heldCube := facts.getHeldCube
-  if let some heldCube := heldCube then
-    -- Drop cubes into the room
-    let dropDests := do
-      let dropDest ← Nondet.choices $ facts.cubeDropDests player
-      pure (facts.moveCube heldCube dropDest)
-
-    -- Fizzle cubes in an adjacent fizzler, if there are any
-    let fizzleDests := do
-      let _ ← Nondet.choices $ facts.fizzlewalkDests player |> List.take 1
-      pure (facts.destroyCube heldCube)
-
-    dropDests ++ fizzleDests
-  else
-    -- Pick a cube up from the room
-    let grabbableCubes := do
-      let grabbableCube ← Nondet.choices $ facts.grabbableCubes player
-      pure (facts.moveCube grabbableCube (.inHands))
-
-    -- Fizzle cubes through walls
-    let dissolveThruFizzlerCubes := do
-      let thruFizzlerDest ← Nondet.choices $ facts.fizzlewalkDests player
-      let cubeThruFizzler ← Nondet.choices $ facts.dissolvableThruFizzlerCubes thruFizzlerDest
-      pure (facts.destroyCube cubeThruFizzler)
-
-    grabbableCubes ++ dissolveThruFizzlerCubes
-
 -- Take one action in the puzzle
 def move : FactSet → Nondet FactSet
 | facts =>
-  Nondet.choices [walkFree, walkFizzle, walkThroughPortals, shootPortals, grabdropCubes] >>= (· facts)
+  Nondet.choices [
+    walkFree, cubeFree,
+    walkPortal, cubePortal,
+    walkFizzle, cubeFizzle,
+    shootPortals
+  ] >>= (· facts)
 
 -- Take n actions in the puzzle
 def move' : Nat → Nondet FactSet → Nondet FactSet
@@ -122,6 +137,8 @@ partial def buildGraph : FactSet → StateGraph → StateGraph
   -- lean do sugar is actually the funniest thing in the world
   -- this is ridiculous. whats the "correct" functional way to do this
 
+def buildGraph': FactSet → StateGraph := (buildGraph · ∅)
+
 def puzzle : FactSet := {
   player := 0,
   portal := .noPortals,
@@ -147,9 +164,30 @@ def puzzle' : FactSet := {
     id := 0,
     autorespawn := some (.inRoom 3),
     position := .inRoom 1
+  },{
+    id := 1,
+    autorespawn := some (.inRoom 3),
+    position := .inRoom 1
   }]
 }
 
-#eval move' 2 $ Nondet.pure puzzle
-#eval buildGraph puzzle ∅
--- #eval buildGraph puzzle' ∅
+def puz : FactSet := {
+  player := 0,
+  portal := .noPortals,
+  portalSurfaces := [],
+  freeConnections := [(0, 1), (1, 0)],
+  fizzleConnections := [(1, 2), (2, 1)],
+  sightlines := [],
+  cubes := [{
+    id := 0,
+    autorespawn := none,
+    position := .inRoom 0
+  }],
+}
+#eval buildGraph' puz
+
+#eval Nondet.everyCombination $ Nondet.choices $ puz.grabbableCubes 0
+
+-- #eval move' 2 $ Nondet.pure puzzle
+#eval buildGraph' puzzle
+#eval buildGraph' puzzle'

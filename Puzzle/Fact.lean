@@ -61,14 +61,6 @@ def FactSet.microString : FactSet → String
 def FactSet.destroyCube : CubeFact → FactSet → FactSet
 | toDestroy, set => { set with cubes := (fun x => if x == toDestroy then CubeFact.destroy x else x) <$> set.cubes}
 
-def FactSet.destroyHeldCube : FactSet → FactSet
-| set => { set with cubes := (fun x => if CubeFact.isHeld x then CubeFact.destroy x else x) <$> set.cubes}
-
-def FactSet.getHeldCube : FactSet → Option CubeFact
-| set => List.head? $ List.filter CubeFact.isHeld set.cubes
-
-def FactSet.isHoldingCube : FactSet → Bool := Option.isSome ∘ FactSet.getHeldCube
-
 def FactSet.moveCube : CubeFact → CubePosition → FactSet → FactSet
 | toPlace, dest, set => { set with cubes :=
   (fun x => if x == toPlace then {x with position := dest} else x) <$> set.cubes}
@@ -82,7 +74,15 @@ def FactSet.walk : Room → FactSet → FactSet
 | room, set => {set with player := room}
 
 def FactSet.fizzlewalk : Room → FactSet → FactSet
-| room => .walk room ∘ .changePortals .noPortals ∘ FactSet.destroyHeldCube
+| room => .walk room ∘ .changePortals .noPortals
+
+def FactSet.moveCubes : Room → (CubeFact → Bool) → FactSet → FactSet
+| room, takeCube, set => {set with
+  cubes := (fun cube => if takeCube cube then cube.moveTo (.inRoom room) else cube) <$> set.cubes
+}
+
+def FactSet.walkWithCubes : Room → (CubeFact → Bool) → FactSet → FactSet
+| room, takeCube, set => FactSet.moveCubes room takeCube set |> FactSet.walk room
 
 -- helpers
 def FactSet.freewalkDests : Room → FactSet → List Room

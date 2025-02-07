@@ -23,3 +23,11 @@ instance : Monad Nondet where
 
 def Nondet.dedupe [BEq α]: Nondet α → Nondet α
 | .choices f => .choices $ List.eraseDups f
+
+def Nondet.everyCombination : Nondet α → Nondet (List α)
+| .choices [] => .choices [[]]
+| .choices (a :: as) =>
+  everyCombination (.choices as) >>= (fun tail => choices [[a] ++ tail, tail])
+  -- we do longer choices first, switch around the order of this ^ list to do shorter first
+
+#eval Nondet.everyCombination $ Nondet.choices [1, 2, 3, 4]

@@ -3,22 +3,15 @@ import Puzzle.Room
 inductive CubePosition where
 | nowhere: CubePosition
 | inRoom: Room → CubePosition
-| inHands: CubePosition
 deriving BEq, Ord, Hashable, Repr
-
-def CubePosition.isHeld : CubePosition → Bool
-| .inHands => true
-| _ => false
 
 def CubePosition.isInRoom : Room → CubePosition → Bool
 | _, .nowhere => false
-| _, .inHands => true
 | r1, .inRoom r2 => r1 == r2
 
 instance : ToString CubePosition where
   toString
   | .nowhere => "×"
-  | .inHands => "held"
   | .inRoom r => toString r
 
 structure CubeFact where
@@ -27,9 +20,11 @@ structure CubeFact where
   position: CubePosition
 deriving BEq, Ord, Hashable, Repr
 
-def CubeFact.isHeld := CubePosition.isHeld ∘ CubeFact.position
 def CubeFact.isInRoom : Room → CubeFact → Bool
 | room, fact => fact.position.isInRoom room
+
+def CubeFact.moveTo : CubePosition → CubeFact → CubeFact
+| position, fact => { fact with position }
 
 def CubeFact.destroy : CubeFact → CubeFact
 | c =>

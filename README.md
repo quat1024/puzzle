@@ -52,3 +52,13 @@ might want to change this into
 - if there is a fizzler blocking an adjacent room, you can dissolve cubes in that room that aren't busy resting on a button or something (same concept)
 
 basically this removes the "cube in hands" state, which will halve the number of puzzle states (`player in room 0, cube in room 0` vs `player in room 0, cube in hands`), and i think it's also more realistic (if you have a one-way ledge, you can bring more than one cube by tossing them down the ledge)
+
+## todo
+
+ok that opens up a different idea: what about dropping cubes off ledges without actually going there yourself
+
+so "moving cubes" and "moving the player" are actually 2 different actions that don't need to happen in concert
+
+so maybe walking with cubes is actually alternating between first kicking the cube into that room, and then following it with your player. same for putting cubes through portals.
+
+and then! we don't actually need to take "every combination" of cubes anymore, since you can just repeat the action of kicking cubes! so taking every combination will only add more edges and make the graph denser. (might not be a terrible thing)
