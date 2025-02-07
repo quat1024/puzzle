@@ -1,4 +1,5 @@
 import Puzzle.Room
+import Puzzle.Util
 
 inductive CubePosition where
 | nowhere: CubePosition
@@ -36,11 +37,4 @@ def CubeFact.destroy : CubeFact → CubeFact
 instance : ToString CubeFact where
   toString f := s!"{f.id}{f.position}"
 
-def CubeFact.compareLists : List CubeFact → List CubeFact → Ordering
-| [], [] => .eq
-| _x, [] => .gt
-| [], _y => .lt
-| x :: xs, y :: ys => (compare x y).then (compareLists xs ys)
-
-instance : Ord (List CubeFact) where
-  compare := CubeFact.compareLists
+instance : Ord (List CubeFact) := Util.lexicographical
